@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yugggoth</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000000; /* Pure black background */
+            display: flex;
+            justify-content: center;
+            align-items: center; /* Center items */
+            height: 100%;
+            font-family: 'Arial', sans-serif;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%; /* Full screen height */
+            z-index: 1;
+        }
+
+        .audio-player {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            z-index: 2; /* Ensure it stays above the canvas */
+            background-color: rgba(0, 0, 0, 0.7); /* Slightly transparent background */
+            padding: 10px;
+            box-sizing: border-box;
+            display: none; /* Hide audio player until play button is clicked */
+        }
+
+        .audio-player iframe {
+            display: block;
+            border-radius: 6px;
+            border: none;
+            height: 204px;
+            width: 100%;
+        }
+
+        .audio-player a {
+            text-align: center;
+            display: block;
+            color: #A4ABB6;
+            font-size: 12px;
+            font-family: sans-serif;
+            line-height: 16px;
+            margin-top: 8px;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        /* Play Button */
+        .play-button {
+            position: absolute;
+            z-index: 3;
+            padding: 20px 40px;
+            background-color: #ff0000;
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            font-size: 20px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .play-button:hover {
+            background-color: #cc0000;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="visualizer"></canvas>
+
+    <!-- Play Button -->
+    <button class="play-button" id="play-button">Play</button>
+
+    <!-- Audio Player Embed -->
+    <div class="audio-player" id="audio-player">
+        <iframe id="audio-iframe" src="https://audio.com/embed/audio/1807856563339307?theme=image"></iframe>
+        <a href='https://audio.com/jorge-gasca'>@jorge-gasca</a>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('visualizer');
+        const ctx = canvas.getContext('2d');
+        const playButton = document.getElementById('play-button');
+        const audioPlayer = document.getElementById('audio-player');
+        const audioIframe = document.getElementById('audio-iframe');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight; // Set canvas height to full window height
+
+        let animationRunning = false;
+        let startTime;
+
+        function startAnimation() {
+            animationRunning = true;
+            startTime = performance.now();
+            drawPatterns();
+        }
+
+        function drawPolygon(x, y, radius, sides, strokeStyle = '#ffffff', lineWidth = 2, rotation = 0, glowColor = '#808080') {
+            ctx.save();
+            ctx.beginPath();
+            const angle = (Math.PI * 2) / sides;
+            for (let i = 0; i < sides; i++) {
+                const currentAngle = i * angle + rotation;
+                const xPos = x + radius * Math.cos(currentAngle);
+                const yPos = y + radius * Math.sin(currentAngle);
+                if (i === 0) {
+                    ctx.moveTo(xPos, yPos);
+                } else {
+                    ctx.lineTo(xPos, yPos);
+                }
+            }
+            ctx.closePath();
+
+            ctx.shadowColor = glowColor;
+            ctx.shadowBlur = 20;
+            ctx.strokeStyle = strokeStyle;
+            ctx.lineWidth = lineWidth;
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawPentagram(x, y, radius) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(Math.PI); // Invert the pentagram
+            ctx.translate(-x, -y);
+            ctx.beginPath();
+            for (let i = 0; i < 5; i++) {
+                const angle = (Math.PI * 2) / 5 * i - Math.PI / 10;
+                const nextAngle = angle + (Math.PI * 2) / 5 * 2;
+                ctx.moveTo(x + radius * Math.cos(angle), y + radius * Math.sin(angle));
+                ctx.lineTo(x + radius * Math.cos(nextAngle), y + radius * Math.sin(nextAngle));
+            }
+            ctx.strokeStyle = '#ff0000'; // Red color for pentagram
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawPatterns() {
+            if (!animationRunning) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Calculate the current time in the track
+            let elapsedTime = (performance.now() - startTime) % (7 * 60 * 1000); // 7 minutes in milliseconds
+            let progress = elapsedTime / (7 * 60 * 1000);
+
+            const baseRotationSpeed = 0.5 + progress * 2;
+            const complexity = Math.floor(8 + progress * 12); // Increased complexity
+            const maxRadius = Math.min(canvas.width, canvas.height) * 0.2 * (1 + progress); // Start smaller and grow to cover the screen
+
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            // Draw an expanding pentagram that resets after reaching the full screen size
+            const pentagramRadius = maxRadius * progress;
+            if (pentagramRadius <= Math.min(canvas.width, canvas.height) / 2) {
+                drawPentagram(centerX, centerY, pentagramRadius);
+            }
+
+            // Draw complex, symmetric polygons
+            for (let i = 0; i < complexity; i++) {
+                const radius = maxRadius * (i + 1) / complexity;
+                const rotation = elapsedTime * (i + 1) * baseRotationSpeed * 0.02;
+                const color = i % 2 === 0 ? '#ffffff' : '#808080';
+                drawPolygon(centerX, centerY, radius, 6 + i * 2, color, 2, rotation, '#808080');
+            }
+
+            requestAnimationFrame(drawPatterns);
+        }
+
+        playButton.addEventListener('click', () => {
+            audioPlayer.style.display = 'block'; // Show the audio player
+            playButton.style.display = 'none'; // Hide the play button
+            audioIframe.contentWindow.postMessage('play', '*'); // Start playing the audio track
+            startAnimation(); // Start the animation
+        });
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight; // Adjust canvas height on resize
+        });
+    </script>
+</body>
+</html>
